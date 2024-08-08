@@ -284,3 +284,8 @@ P.S.
 Please drop me a note with any feedback you have.
 
 **Ran Aroussi**
+
+Customization
+-------------
+
+You can change the code and create a custom package with `python3 setup.py sdist bdist_wheel`. It will create a tar.gz file that you can `pip install`.

@@ -60,10 +60,11 @@ def html(
     output=None,
     compounded=True,
     periods_per_year=252,
-    download_filename="quantstats-tearsheet.html",
+    download_filename="tearsheet.html",
     figfmt="svg",
     template_path=None,
     match_dates=True,
+    text_description=None,
     **kwargs,
 ):
 
@@ -109,6 +110,9 @@ def html(
     else:
         benchmark_title = None
 
+    if text_description is not None:
+        tpl = tpl.replace("{{text_description}}", text_description)
+
     date_range = returns.index.strftime("%e %b, %Y")
     tpl = tpl.replace("{{date_range}}", date_range[0] + " - " + date_range[-1])
     tpl = tpl.replace("{{title}}", title)
@@ -136,8 +140,35 @@ def html(
         strategy_title=strategy_title,
     )[2:]
 
+    # Trocar linhas do DataFrame
+    #mtrx = _pd.concat([
+    #    mtrx.iloc[0:2],
+    #    _pd.DataFrame([mtrx.iloc[18]]), # Volatility (ann.)
+    #    _pd.DataFrame([mtrx.iloc[2]]), # Correlation
+    #    mtrx.iloc[6:18], # Cumulative Return to ...
+    #    mtrx.iloc[19:]
+    #])
+    mtrx = _pd.concat([
+        mtrx.iloc[7:9], # Cumulative Return, CAGR%
+        _pd.DataFrame([mtrx.iloc[6]]), # Vazio
+        mtrx.iloc[0:2],
+        _pd.DataFrame([mtrx.iloc[18]]), # Volatility (ann.)
+        _pd.DataFrame([mtrx.iloc[2]]), # Correlation
+        mtrx.iloc[9:18], # Vazio, Sharpe ... Smart Sortino, Vazio
+        mtrx.iloc[19:]
+
+    #    _pd.DataFrame([mtrx.iloc[18]]), # Volatility (ann.)
+    #    _pd.DataFrame([mtrx.iloc[2]]), # Correlation
+    #    mtrx.iloc[6:18], # Cumulative Return to ...
+    #    mtrx.iloc[19:]
+    ])
+
+    print(mtrx)
+
     mtrx.index.name = "Metric"
-    tpl = tpl.replace("{{metrics}}", _html_table(mtrx))
+    tpl = tpl.replace("{{key-metrics}}", _html_table(mtrx[:13]))
+    tpl = tpl.replace("{{metrics}}", _html_table(mtrx[14:]))
+
     if isinstance(returns, _pd.DataFrame):
         num_cols = len(returns.columns)
         for i in reversed(range(num_cols + 1, num_cols + 3)):
@@ -209,7 +240,7 @@ def html(
             )
         tpl = tpl.replace("{{dd_info}}", dd_html_table)
 
-    active = kwargs.get("active_returns", "False")
+    active = kwargs.get("active_returns", False)
     # plots
     figfile = _utils._file_stream()
     _plots.returns(
@@ -330,7 +361,8 @@ def html(
         savefig={"fname": figfile, "format": figfmt},
         show=False,
         ylabel=False,
-        period=win_half_year,
+        period=win_year,
+        period_label="1-Year",
         periods_per_year=win_year,
     )
     tpl = tpl.replace("{{rolling_vol}}", _embed_figure(figfile, figfmt))
@@ -344,7 +376,8 @@ def html(
         savefig={"fname": figfile, "format": figfmt},
         show=False,
         ylabel=False,
-        period=win_half_year,
+        period=win_year,
+        period_label="1-Year",
         periods_per_year=win_year,
     )
     tpl = tpl.replace("{{rolling_sharpe}}", _embed_figure(figfile, figfmt))
@@ -358,7 +391,8 @@ def html(
         savefig={"fname": figfile, "format": figfmt},
         show=False,
         ylabel=False,
-        period=win_half_year,
+        period=win_year,
+        period_label="1-Year",
         periods_per_year=win_year,
     )
     tpl = tpl.replace("{{rolling_sortino}}", _embed_figure(figfile, figfmt))
@@ -515,7 +549,7 @@ def full(
     if benchmark is not None:
         benchmark_title = kwargs.get("benchmark_title", "Benchmark")
     strategy_title = kwargs.get("strategy_title", "Strategy")
-    active = kwargs.get("active_returns", "False")
+    active = kwargs.get("active_returns", False)
 
     if isinstance(returns, _pd.DataFrame):
         if len(returns.columns) > 1 and isinstance(strategy_title, str):
@@ -665,7 +699,7 @@ def basic(
     if benchmark is not None:
         benchmark_title = kwargs.get("benchmark_title", "Benchmark")
     strategy_title = kwargs.get("strategy_title", "Strategy")
-    active = kwargs.get("active_returns", "False")
+    active = kwargs.get("active_returns", False)
 
     if isinstance(returns, _pd.DataFrame):
         if len(returns.columns) > 1 and isinstance(strategy_title, str):
@@ -823,12 +857,80 @@ def metrics(
         as_pct=kwargs.get("as_pct", False),
     )
 
+    # início da tabela de métricas
     metrics = _pd.DataFrame()
     metrics["Start Period"] = _pd.Series(s_start)
     metrics["End Period"] = _pd.Series(s_end)
+
+    if "benchmark" in df:
+        if isinstance(returns, _pd.Series):
+            greeks = _stats.greeks(
+                df["returns"], df["benchmark"], win_year, prepare_returns=False
+            )
+            metrics["Alpha"] = [str(round(greeks["alpha"], 2)), "-"]
+            metrics["Beta"] = [str(round(greeks["beta"], 2)), "-"]
+            metrics["Correlation"] = [
+                str(round(df["benchmark"].corr(df["returns"]) * pct, 2)) + "%",
+                "-",
+            ]
+            # metrics["Treynor Ratio"] = [
+            #     str(
+            #         round(
+            #             _stats.treynor_ratio(
+            #                 df["returns"], df["benchmark"], win_year, rf
+            #             )
+            #             * pct,
+            #             2,
+            #         )
+            #     )
+            #     + "%",
+            #     "-",
+            # ]
+        elif isinstance(returns, _pd.DataFrame):
+            greeks = [
+                _stats.greeks(
+                    df[strategy_col],
+                    df["benchmark"],
+                    win_year,
+                    prepare_returns=False,
+                )
+                for strategy_col in df_strategy_columns
+            ]
+            metrics["Alpha"] = [str(round(g["alpha"], 2)) for g in greeks] + ["-"]
+            metrics["Beta"] = [str(round(g["beta"], 2)) for g in greeks] + ["-"]
+            metrics["Correlation"] = (
+                [
+                    str(round(df["benchmark"].corr(df[strategy_col]) * pct, 2))
+                    + "%"
+                    for strategy_col in df_strategy_columns
+                ]
+            ) + ["-"]
+            # metrics["Treynor Ratio"] = (
+            #     [
+            #         str(
+            #             round(
+            #                 _stats.treynor_ratio(
+            #                     df[strategy_col], df["benchmark"], win_year, rf
+            #                 )
+            #                 * pct,
+            #                 2,
+            #             )
+            #         )
+            #         + "%"
+            #         for strategy_col in df_strategy_columns
+            #     ]
+            # ) + ["-"]
+
+
+
+
+
+
+    metrics["~~~~~~~~~~~~"] = blank
     metrics["Risk-Free Rate %"] = _pd.Series(s_rf) * 100
     metrics["Time in Market %"] = _stats.exposure(df, prepare_returns=False) * pct
 
+    # adiciona uma barra entre as métricas acima e as posteriores
     metrics["~"] = blank
 
     if compounded:
@@ -838,6 +940,7 @@ def metrics(
 
     metrics["CAGR﹪%"] = _stats.cagr(df, rf, compounded) * pct
 
+    # adiciona uma barra entre as métricas acima e as posteriores
     metrics["~~~~~~~~~~~~~~"] = blank
 
     metrics["Sharpe"] = _stats.sharpe(df, rf, win_year, True)
@@ -854,12 +957,12 @@ def metrics(
         metrics["Smart Sortino"] = _stats.smart_sortino(df, rf, win_year, True)
         # metrics['Prob. Smart Sortino Ratio %'] = _stats.probabilistic_sortino_ratio(df, rf, win_year, False, True) * pct
 
-    metrics["Sortino/√2"] = metrics["Sortino"] / _sqrt(2)
-    if mode.lower() == "full":
-        # metrics['Prob. Sortino/√2 Ratio %'] = _stats.probabilistic_adjusted_sortino_ratio(df, rf, win_year, False) * pct
-        metrics["Smart Sortino/√2"] = metrics["Smart Sortino"] / _sqrt(2)
-        # metrics['Prob. Smart Sortino/√2 Ratio %'] = _stats.probabilistic_adjusted_sortino_ratio(df, rf, win_year, False, True) * pct
-    metrics["Omega"] = _stats.omega(df, rf, 0.0, win_year)
+    #metrics["Sortino/√2"] = metrics["Sortino"] / _sqrt(2)
+    #if mode.lower() == "full":
+        ## metrics['Prob. Sortino/√2 Ratio %'] = _stats.probabilistic_adjusted_sortino_ratio(df, rf, win_year, False) * pct
+        #metrics["Smart Sortino/√2"] = metrics["Smart Sortino"] / _sqrt(2)
+        ## metrics['Prob. Smart Sortino/√2 Ratio %'] = _stats.probabilistic_adjusted_sortino_ratio(df, rf, win_year, False, True) * pct
+    #metrics["Omega"] = _stats.omega(df, rf, 0.0, win_year)
 
     metrics["~~~~~~~~"] = blank
     metrics["Max Drawdown %"] = blank
@@ -1047,66 +1150,6 @@ def metrics(
             _stats.win_rate(df, compounded=compounded, aggregate="A", prepare_returns=False) * pct
         )
 
-        if "benchmark" in df:
-            metrics["~~~~~~~~~~~~"] = blank
-            if isinstance(returns, _pd.Series):
-                greeks = _stats.greeks(
-                    df["returns"], df["benchmark"], win_year, prepare_returns=False
-                )
-                metrics["Beta"] = [str(round(greeks["beta"], 2)), "-"]
-                metrics["Alpha"] = [str(round(greeks["alpha"], 2)), "-"]
-                metrics["Correlation"] = [
-                    str(round(df["benchmark"].corr(df["returns"]) * pct, 2)) + "%",
-                    "-",
-                ]
-                metrics["Treynor Ratio"] = [
-                    str(
-                        round(
-                            _stats.treynor_ratio(
-                                df["returns"], df["benchmark"], win_year, rf
-                            )
-                            * pct,
-                            2,
-                        )
-                    )
-                    + "%",
-                    "-",
-                ]
-            elif isinstance(returns, _pd.DataFrame):
-                greeks = [
-                    _stats.greeks(
-                        df[strategy_col],
-                        df["benchmark"],
-                        win_year,
-                        prepare_returns=False,
-                    )
-                    for strategy_col in df_strategy_columns
-                ]
-                metrics["Beta"] = [str(round(g["beta"], 2)) for g in greeks] + ["-"]
-                metrics["Alpha"] = [str(round(g["alpha"], 2)) for g in greeks] + ["-"]
-                metrics["Correlation"] = (
-                    [
-                        str(round(df["benchmark"].corr(df[strategy_col]) * pct, 2))
-                        + "%"
-                        for strategy_col in df_strategy_columns
-                    ]
-                ) + ["-"]
-                metrics["Treynor Ratio"] = (
-                    [
-                        str(
-                            round(
-                                _stats.treynor_ratio(
-                                    df[strategy_col], df["benchmark"], win_year, rf
-                                )
-                                * pct,
-                                2,
-                            )
-                        )
-                        + "%"
-                        for strategy_col in df_strategy_columns
-                    ]
-                ) + ["-"]
-
     # prepare for display
     for col in metrics.columns:
         try:
@@ -1215,7 +1258,7 @@ def plots(
 
     benchmark_colname = kwargs.get("benchmark_title", "Benchmark")
     strategy_colname = kwargs.get("strategy_title", "Strategy")
-    active = kwargs.get("active", "False")
+    active = kwargs.get("active", False)
 
     if isinstance(returns, _pd.DataFrame):
         if len(returns.columns) > 1:
@@ -1568,7 +1611,7 @@ def _html_table(obj, showindex="default"):
     return obj
 
 
-def _download_html(html, filename="quantstats-tearsheet.html"):
+def _download_html(html, filename="tearsheet.html"):
     jscode = _regex.sub(
         " +",
         " ",
