@@ -79,9 +79,9 @@ def distribution(returns, compounded=True, prepare_returns=True):
     return {
         "Daily": get_outliers(daily),
         "Weekly": get_outliers(daily.resample("W-MON").apply(apply_fnc)),
-        "Monthly": get_outliers(daily.resample("M").apply(apply_fnc)),
-        "Quarterly": get_outliers(daily.resample("Q").apply(apply_fnc)),
-        "Yearly": get_outliers(daily.resample("A").apply(apply_fnc)),
+        "Monthly": get_outliers(daily.resample("ME").apply(apply_fnc)),
+        "Quarterly": get_outliers(daily.resample("QE").apply(apply_fnc)),
+        "Yearly": get_outliers(daily.resample("YE").apply(apply_fnc)),
     }
 
 
@@ -93,7 +93,7 @@ def expected_return(returns, aggregate=None, compounded=True, prepare_returns=Tr
     if prepare_returns:
         returns = _utils._prepare_returns(returns)
     returns = _utils.aggregate_returns(returns, aggregate, compounded)
-    return _np.product(1 + returns) ** (1 / len(returns)) - 1
+    return _np.prod(1 + returns, axis=0) ** (1 / len(returns)) - 1
 
 
 def geometric_mean(retruns, aggregate=None, compounded=True):
@@ -318,10 +318,12 @@ def rolling_sharpe(
     if prepare_returns:
         returns = _utils._prepare_returns(returns, rf, rolling_period)
 
-    res = returns.rolling(rolling_period).mean() / returns.rolling(rolling_period).std()
+    res = returns.rolling(rolling_period).mean() / \
+        returns.rolling(rolling_period).std()
 
     if annualize:
-        res = res * _np.sqrt(1 if periods_per_year is None else periods_per_year)
+        res = res * \
+            _np.sqrt(1 if periods_per_year is None else periods_per_year)
     return res
 
 
@@ -376,7 +378,8 @@ def rolling_sortino(
 
     res = returns.rolling(rolling_period).mean() / _np.sqrt(downside)
     if annualize:
-        res = res * _np.sqrt(1 if periods_per_year is None else periods_per_year)
+        res = res * \
+            _np.sqrt(1 if periods_per_year is None else periods_per_year)
     return res
 
 
@@ -386,7 +389,8 @@ def adjusted_sortino(returns, rf=0, periods=252, annualize=True, smart=False):
     direct comparisons to the Sharpe. See here for more info:
     https://archive.is/wip/2rwFW
     """
-    data = sortino(returns, rf, periods=periods, annualize=annualize, smart=smart)
+    data = sortino(returns, rf, periods=periods,
+                   annualize=annualize, smart=smart)
     return data / _sqrt(2)
 
 
@@ -399,7 +403,8 @@ def probabilistic_ratio(
     elif base.lower() == "sortino":
         base = sortino(series, periods=periods, annualize=False, smart=smart)
     elif base.lower() == "adjusted_sortino":
-        base = adjusted_sortino(series, periods=periods, annualize=False, smart=smart)
+        base = adjusted_sortino(series, periods=periods,
+                                annualize=False, smart=smart)
     else:
         raise Exception(
             "`metric` must be either `sharpe`, `sortino`, or `adjusted_sortino`"
@@ -494,7 +499,8 @@ def omega(returns, rf=0.0, required_return=0.0, periods=252):
 
     returns_less_thresh = returns - return_threshold
     numer = returns_less_thresh[returns_less_thresh > 0.0].sum().values[0]
-    denom = -1.0 * returns_less_thresh[returns_less_thresh < 0.0].sum().values[0]
+    denom = -1.0 * \
+        returns_less_thresh[returns_less_thresh < 0.0].sum().values[0]
 
     if denom > 0.0:
         return numer / denom
@@ -824,7 +830,7 @@ def drawdown_details(drawdown):
         # build dataframe from results
         data = []
         for i, _ in enumerate(starts):
-            dd = drawdown[starts[i] : ends[i]]
+            dd = drawdown[starts[i]: ends[i]]
             clean_dd = -remove_outliers(-dd, 0.99)
             data.append(
                 (
@@ -1026,7 +1032,8 @@ def monthly_returns(returns, eoy=True, compounded=True, prepare_returns=True):
     original_returns = returns.copy()
 
     returns = _pd.DataFrame(
-        _utils.group_returns(returns, returns.index.strftime("%Y-%m-01"), compounded)
+        _utils.group_returns(
+            returns, returns.index.strftime("%Y-%m-01"), compounded)
     )
 
     returns.columns = ["Returns"]
@@ -1037,7 +1044,8 @@ def monthly_returns(returns, eoy=True, compounded=True, prepare_returns=True):
     returns["Month"] = returns.index.strftime("%b")
 
     # make pivot table
-    returns = returns.pivot(index="Year", columns="Month", values="Returns").fillna(0)
+    returns = returns.pivot(index="Year", columns="Month",
+                            values="Returns").fillna(0)
 
     # handle missing months
     for month in [

@@ -100,7 +100,7 @@ def plot_returns_bars(
     hlw=None,
     hlcolor="red",
     hllabel="",
-    resample="A",
+    resample="YE",
     title="Returns",
     match_volatility=False,
     log_scale=False,
@@ -125,7 +125,8 @@ def plot_returns_bars(
         df = _pd.DataFrame(index=returns.index, data={returns.name: returns})
     elif isinstance(returns, _pd.DataFrame):
         df = _pd.DataFrame(
-            index=returns.index, data={col: returns[col] for col in returns.columns}
+            index=returns.index, data={
+                col: returns[col] for col in returns.columns}
         )
     if isinstance(benchmark, _pd.Series):
         df[benchmark.name] = benchmark[benchmark.index.isin(returns.index)]
@@ -192,7 +193,8 @@ def plot_returns_bars(
         if not isinstance(hline, _pd.Series):
             if grayscale:
                 hlcolor = "gray"
-            ax.axhline(hline, ls="--", lw=hlw, color=hlcolor, label=hllabel, zorder=2)
+            ax.axhline(hline, ls="--", lw=hlw, color=hlcolor,
+                       label=hllabel, zorder=2)
 
     ax.axhline(0, ls="--", lw=1, color="#000000", zorder=2)
 
@@ -326,15 +328,18 @@ def plot_timeseries(
 
     alpha = 0.25 if grayscale else 1
     if isinstance(returns, _pd.Series):
-        ax.plot(returns, lw=lw, label=returns.name, color=colors[1], alpha=alpha)
+        ax.plot(returns, lw=lw, label=returns.name,
+                color=colors[1], alpha=alpha)
     elif isinstance(returns, _pd.DataFrame):
         # color_dict = {col: colors[i+1] for i, col in enumerate(returns.columns)}
         for i, col in enumerate(returns.columns):
-            ax.plot(returns[col], lw=lw, label=col, alpha=alpha, color=colors[i + 1])
+            ax.plot(returns[col], lw=lw, label=col,
+                    alpha=alpha, color=colors[i + 1])
 
     if fill:
         if isinstance(returns, _pd.Series):
-            ax.fill_between(returns.index, 0, returns, color=colors[1], alpha=0.25)
+            ax.fill_between(returns.index, 0, returns,
+                            color=colors[1], alpha=0.25)
         elif isinstance(returns, _pd.DataFrame):
             for i, col in enumerate(returns.columns):
                 ax.fill_between(
@@ -351,10 +356,12 @@ def plot_timeseries(
         if not isinstance(hline, _pd.Series):
             if grayscale:
                 hlcolor = "black"
-            ax.axhline(hline, ls="--", lw=hlw, color=hlcolor, label=hllabel, zorder=2)
+            ax.axhline(hline, ls="--", lw=hlw, color=hlcolor,
+                       label=hllabel, zorder=2)
 
     ax.axhline(0, ls="-", lw=1, color="gray", zorder=1)
-    ax.axhline(0, ls="--", lw=1, color="white" if grayscale else "black", zorder=2)
+    ax.axhline(0, ls="--", lw=1,
+               color="white" if grayscale else "black", zorder=2)
 
     # if isinstance(benchmark, _pd.Series) or hline is not None:
     ax.legend(fontsize=11)
@@ -406,7 +413,7 @@ def plot_timeseries(
 def plot_histogram(
     returns,
     benchmark,
-    resample="M",
+    resample="ME",
     bins=20,
     fontname="Arial",
     grayscale=False,
@@ -437,7 +444,8 @@ def plot_histogram(
         )
 
     returns = (
-        returns.fillna(0).resample(resample).apply(apply_fnc).resample(resample).last()
+        returns.fillna(0).resample(resample).apply(
+            apply_fnc).resample(resample).last()
     )
 
     figsize = (0.995 * figsize[0], figsize[1])
@@ -473,7 +481,7 @@ def plot_histogram(
     alpha = 0.7
     if isinstance(returns, _pd.DataFrame):
         pallete = (
-            colors[1 : len(returns.columns) + 1]
+            colors[1: len(returns.columns) + 1]
             if benchmark is None
             else colors[: len(returns.columns) + 1]
         )
@@ -632,7 +640,8 @@ def plot_rolling_stats(
         df = _pd.DataFrame(index=returns.index, data={returns_label: returns})
     elif isinstance(returns, _pd.DataFrame):
         df = _pd.DataFrame(
-            index=returns.index, data={col: returns[col] for col in returns.columns}
+            index=returns.index, data={
+                col: returns[col] for col in returns.columns}
         )
     if isinstance(benchmark, _pd.Series):
         df["Benchmark"] = benchmark[benchmark.index.isin(returns.index)]
@@ -684,7 +693,8 @@ def plot_rolling_stats(
         if not isinstance(hline, _pd.Series):
             if grayscale:
                 hlcolor = "black"
-            ax.axhline(hline, ls="--", lw=hlw, color=hlcolor, label=hllabel, zorder=2)
+            ax.axhline(hline, ls="--", lw=hlw, color=hlcolor,
+                       label=hllabel, zorder=2)
 
     ax.axhline(0, ls="--", lw=1, color="#000000", zorder=2)
 
@@ -771,7 +781,8 @@ def plot_rolling_beta(
 
     i = 1
     if isinstance(returns, _pd.Series):
-        beta = _stats.rolling_greeks(returns, benchmark, window1)["beta"].fillna(0)
+        beta = _stats.rolling_greeks(returns, benchmark, window1)[
+            "beta"].fillna(0)
         ax.plot(beta, lw=lw, label=window1_label, color=colors[1])
     elif isinstance(returns, _pd.DataFrame):
         beta = {
@@ -781,7 +792,8 @@ def plot_rolling_beta(
             for col in returns.columns
         }
         for name, b in beta.items():
-            ax.plot(b, lw=lw, label=name + " " + f"({window1_label})", color=colors[i])
+            ax.plot(b, lw=lw, label=name + " " +
+                    f"({window1_label})", color=colors[i])
             i += 1
 
     i = 1
@@ -797,7 +809,8 @@ def plot_rolling_beta(
             )
         elif isinstance(returns, _pd.DataFrame):
             betas_w2 = {
-                col: _stats.rolling_greeks(returns[col], benchmark, window2)["beta"]
+                col: _stats.rolling_greeks(
+                    returns[col], benchmark, window2)["beta"]
                 for col in returns.columns
             }
             for name, beta_w2 in betas_w2.items():
@@ -1013,16 +1026,16 @@ def plot_distribution(
     apply_fnc = _stats.comp if compounded else _np.sum
 
     port["Weekly"] = port["Daily"].resample("W-MON").apply(apply_fnc)
-    port["Weekly"].ffill(inplace=True)
+    port["Weekly"] = port["Weekly"].ffill()
 
-    port["Monthly"] = port["Daily"].resample("M").apply(apply_fnc)
-    port["Monthly"].ffill(inplace=True)
+    port["Monthly"] = port["Daily"].resample("ME").apply(apply_fnc)
+    port["Monthly"] = port["Monthly"].ffill()
 
-    port["Quarterly"] = port["Daily"].resample("Q").apply(apply_fnc)
-    port["Quarterly"].ffill(inplace=True)
+    port["Quarterly"] = port["Daily"].resample("QE").apply(apply_fnc)
+    port["Quarterly"] = port["Quarterly"].ffill()
 
-    port["Yearly"] = port["Daily"].resample("A").apply(apply_fnc)
-    port["Yearly"].ffill(inplace=True)
+    port["Yearly"] = port["Daily"].resample("YE").apply(apply_fnc)
+    port["Yearly"] = port["Yearly"].ffill()
 
     fig, ax = _plt.subplots(figsize=figsize)
     ax.spines["top"].set_visible(False)

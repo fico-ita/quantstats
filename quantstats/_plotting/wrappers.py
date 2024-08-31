@@ -38,7 +38,8 @@ from .. import (
 from . import core as _core
 
 
-_FLATUI_COLORS = ["#fedd78", "#348dc1", "#af4b64", "#4fa487", "#9b59b6", "#808080"]
+_FLATUI_COLORS = ["#fedd78", "#348dc1",
+                  "#af4b64", "#4fa487", "#9b59b6", "#808080"]
 _GRAYSCALE_COLORS = (len(_FLATUI_COLORS) * ["black"]) + ["white"]
 
 _HAS_PLOTLY = False
@@ -90,7 +91,8 @@ def snapshot(
         returns.columns = strategy_colname
 
     colors = _GRAYSCALE_COLORS if grayscale else _FLATUI_COLORS
-    returns = _utils.make_portfolio(returns.dropna(), 1, mode).pct_change().fillna(0)
+    returns = _utils.make_portfolio(
+        returns.dropna(), 1, mode).pct_change().fillna(0)
 
     if figsize is None:
         size = list(_plt.gcf().get_size_inches())
@@ -181,13 +183,15 @@ def snapshot(
     ddmin_ticks = int(_utils._round_to_closest(ddmin_ticks, 5))
 
     # ddmin_ticks = int(_utils._round_to_closest(ddmin, 5))
-    axes[1].set_ylabel("Drawdown", fontname=fontname, fontweight="bold", fontsize=12)
+    axes[1].set_ylabel("Drawdown", fontname=fontname,
+                       fontweight="bold", fontsize=12)
     axes[1].set_yticks(_np.arange(-ddmin, 0, step=ddmin_ticks))
     if isinstance(dd, _pd.Series):
         axes[1].plot(dd, color=colors[2], lw=1 if grayscale else lw, zorder=1)
     elif isinstance(dd, _pd.DataFrame):
         for col in dd.columns:
-            axes[1].plot(dd[col], label=col, lw=1 if grayscale else lw, zorder=1)
+            axes[1].plot(dd[col], label=col,
+                         lw=1 if grayscale else lw, zorder=1)
     axes[1].axhline(0, color="silver", lw=1, zorder=0)
     if not grayscale:
         if isinstance(dd, _pd.Series):
@@ -304,11 +308,13 @@ def earnings(
                 returns.index.date[1:2][0].strftime("%e %b '%y"),
                 returns.index.date[-1:][0].strftime("%e %b '%y"),
                 _utils._score_str(
-                    "${:,}".format(round(returns.values[-1] - returns.values[0], 2))
+                    "${:,}".format(
+                        round(returns.values[-1] - returns.values[0], 2))
                 ),
                 _utils._score_str(
                     "{:,}%".format(
-                        round((returns.values[-1] / returns.values[0] - 1) * 100, 2)
+                        round((returns.values[-1] /
+                              returns.values[0] - 1) * 100, 2)
                     )
                 ),
             ),
@@ -552,9 +558,9 @@ def yearly_returns(
         title += "  vs Benchmark"
         benchmark = (
             _utils._prepare_benchmark(benchmark, returns.index)
-            .resample("A")
+            .resample("YE")
             .apply(_stats.comp)
-            .resample("A")
+            .resample("YE")
             .last()
         )
 
@@ -562,10 +568,10 @@ def yearly_returns(
         returns = _utils._prepare_returns(returns)
 
     if compounded:
-        returns = returns.resample("A").apply(_stats.comp)
+        returns = returns.resample("YE").apply(_stats.comp)
     else:
-        returns = returns.resample("A").apply(_df.sum)
-    returns = returns.resample("A").last()
+        returns = returns.resample("YE").apply(_df.sum)
+    returns = returns.resample("YE").last()
 
     fig = _core.plot_returns_bars(
         returns,
@@ -625,7 +631,7 @@ def distribution(
 def histogram(
     returns,
     benchmark=None,
-    resample="M",
+    resample="ME",
     fontname="Arial",
     grayscale=False,
     figsize=(10, 5),
@@ -644,11 +650,11 @@ def histogram(
 
     if resample == "W":
         title = "Weekly "
-    elif resample == "M":
+    elif resample == "ME":
         title = "Monthly "
-    elif resample == "Q":
+    elif resample == "QE":
         title = "Quarterly "
-    elif resample == "A":
+    elif resample == "YE":
         title = "Annual "
     else:
         title = ""
@@ -904,7 +910,8 @@ def rolling_sortino(
     show=True,
 ):
 
-    returns = _stats.rolling_sortino(returns, rf, period, True, periods_per_year)
+    returns = _stats.rolling_sortino(
+        returns, rf, period, True, periods_per_year)
 
     if benchmark is not None:
         benchmark = _utils._prepare_benchmark(benchmark, returns.index, rf)
@@ -951,7 +958,8 @@ def monthly_heatmap(
     # colors, ls, alpha = _core._get_colors(grayscale)
     cmap = "gray" if grayscale else "RdYlGn"
 
-    returns = _stats.monthly_returns(returns, eoy=eoy, compounded=compounded) * 100
+    returns = _stats.monthly_returns(
+        returns, eoy=eoy, compounded=compounded) * 100
 
     fig_height = len(returns) / 2.5
 
@@ -984,7 +992,8 @@ def monthly_heatmap(
             color="black",
         )
         benchmark = (
-            _stats.monthly_returns(benchmark, eoy=eoy, compounded=compounded) * 100
+            _stats.monthly_returns(
+                benchmark, eoy=eoy, compounded=compounded) * 100
         )
         active_returns = returns - benchmark
 
@@ -1027,7 +1036,8 @@ def monthly_heatmap(
 
     # align plot to match other
     if ylabel:
-        ax.set_ylabel("Years", fontname=fontname, fontweight="bold", fontsize=12)
+        ax.set_ylabel("Years", fontname=fontname,
+                      fontweight="bold", fontsize=12)
         ax.yaxis.set_label_coords(-0.1, 0.5)
 
     ax.tick_params(colors="#808080")
